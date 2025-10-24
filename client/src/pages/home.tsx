@@ -1,26 +1,77 @@
-import { useState } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { FileUpload } from "@/components/FileUpload";
 import { ResultCard } from "@/components/ResultCard";
+import { ChatInterface } from "@/components/ChatInterface";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Shield, FileCheck, Calculator, AlertCircle } from "lucide-react";
-import type { ContractData } from "@shared/schema";
+import { Shield, FileCheck, Calculator, AlertCircle, ArrowRight } from "lucide-react";
+import type { ContractData, DialogMessage } from "@shared/schema";
+import { DialogAgent } from "@/agents/dialogAgent";
+import { getMissingFields } from "@/utils/validation";
 import { useToast } from "@/hooks/use-toast";
+
+type AppState = "upload" | "dialog" | "summary";
 
 export default function Home() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
-  const [extractedData, setExtractedData] = useState<ContractData | null>(null);
+  const [extractedData, setExtractedData] = useState<Partial<ContractData> | null>(null);
+  const [appState, setAppState] = useState<AppState>("upload");
+  const [dialogAgent, setDialogAgent] = useState<DialogAgent | null>(null);
+  const [messages, setMessages] = useState<DialogMessage[]>([]);
   const { toast } = useToast();
+
+  // Initialize dialog agent when data is extracted
+  useEffect(() => {
+    if (extractedData && appState === "upload") {
+      const missingFields = getMissingFields(extractedData);
+      
+      if (missingFields.length > 0) {
+        // Start dialog flow
+        const agent = new DialogAgent(extractedData);
+        setDialogAgent(agent);
+        setAppState("dialog");
+        
+        // Add welcome message
+        const welcomeMsg: DialogMessage = {
+          id: `msg-${Date.now()}`,
+          type: "system",
+          content: "Ich habe einige Informationen extrahiert. Bitte beantworten Sie noch ein paar Fragen, um die Analyse zu vervollständigen.",
+          timestamp: new Date(),
+        };
+        setMessages([welcomeMsg]);
+        
+        // Add first question
+        const question = agent.getCurrentQuestion();
+        if (question) {
+          const questionMsg: DialogMessage = {
+            id: `msg-${Date.now() + 1}`,
+            type: "question",
+            content: question.question,
+            timestamp: new Date(),
+            field: question.field,
+          };
+          setMessages(prev => [...prev, questionMsg]);
+        }
+      } else {
+        // All data complete, go to summary
+        setAppState("summary");
+      }
+    }
+  }, [extractedData, appState]);
 
   const handleFileSelect = async (file: File) => {
     setSelectedFile(file);
     setExtractedData(null);
+    setAppState("upload");
   };
 
   const handleFileRemove = () => {
     setSelectedFile(null);
     setExtractedData(null);
+    setAppState("upload");
+    setDialogAgent(null);
+    setMessages([]);
   };
 
   const handleExtractData = async () => {
@@ -29,24 +80,21 @@ export default function Home() {
     setIsProcessing(true);
 
     try {
-      // Simulate OCR processing delay
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      const formData = new FormData();
+      formData.append('file', selectedFile);
 
-      // Import mock data
-      const mockData: ContractData = {
-        net_rent: 2400,
-        reference_rate_contract: 1.75,
-        contract_date: "2019-10-01",
-        address: "Nordstrasse 9, 8006 Zürich",
-        kanton: "Zürich",
-        last_increase: null,
-        improvements: false,
-        current_reference_rate: 1.25,
-        inflation_since_contract: 3.8,
-        cost_increase_per_year: 0.5,
-      };
+      const response = await fetch('/api/upload-contract', {
+        method: 'POST',
+        body: formData,
+      });
 
-      setExtractedData(mockData);
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Upload failed');
+      }
+
+      const result = await response.json();
+      setExtractedData(result.data);
       
       toast({
         title: "Erfolgreich extrahiert",
@@ -56,17 +104,104 @@ export default function Home() {
       toast({
         variant: "destructive",
         title: "Fehler",
-        description: "Die Datei konnte nicht verarbeitet werden.",
+        description: error instanceof Error ? error.message : "Die Datei konnte nicht verarbeitet werden.",
       });
     } finally {
       setIsProcessing(false);
     }
   };
 
+  const handleAnswer = (answer: string) => {
+    if (!dialogAgent) return;
+
+    // Add user's answer to messages
+    const answerMsg: DialogMessage = {
+      id: `msg-${Date.now()}`,
+      type: "answer",
+      content: answer,
+      timestamp: new Date(),
+    };
+    setMessages(prev => [...prev, answerMsg]);
+
+    // Process answer
+    const result = dialogAgent.processAnswer(answer);
+    
+    // Check if answer was rejected (validation failed)
+    if (!result.accepted) {
+      const errorMsg: DialogMessage = {
+        id: `msg-${Date.now() + 1}`,
+        type: "system",
+        content: result.error || "Ungültige Eingabe. Bitte versuchen Sie es erneut.",
+        timestamp: new Date(),
+      };
+      setMessages(prev => [...prev, errorMsg]);
+      
+      // Re-ask the same question
+      const sameQuestion = dialogAgent.getCurrentQuestion();
+      if (sameQuestion) {
+        const questionMsg: DialogMessage = {
+          id: `msg-${Date.now() + 2}`,
+          type: "question",
+          content: sameQuestion.question,
+          timestamp: new Date(),
+          field: sameQuestion.field,
+        };
+        setMessages(prev => [...prev, questionMsg]);
+      }
+      return;
+    }
+    
+    // Update contract data
+    setExtractedData(dialogAgent.getContractData());
+
+    // Check if more questions
+    if (!dialogAgent.isComplete()) {
+      const nextQuestion = dialogAgent.getCurrentQuestion();
+      if (nextQuestion) {
+        const questionMsg: DialogMessage = {
+          id: `msg-${Date.now() + 1}`,
+          type: "question",
+          content: nextQuestion.question,
+          timestamp: new Date(),
+          field: nextQuestion.field,
+        };
+        setMessages(prev => [...prev, questionMsg]);
+      }
+    } else {
+      // Dialog complete - transition to summary
+      const completeMsg: DialogMessage = {
+        id: `msg-${Date.now() + 2}`,
+        type: "system",
+        content: "Perfekt! Alle Angaben sind jetzt vollständig.",
+        timestamp: new Date(),
+      };
+      setMessages(prev => [...prev, completeMsg]);
+      
+      // Automatically transition to summary after a brief delay
+      setTimeout(() => {
+        setAppState("summary");
+      }, 1500);
+    }
+  };
+
+  const handleShowSummary = () => {
+    setAppState("summary");
+  };
+
   const handleReset = () => {
     setSelectedFile(null);
     setExtractedData(null);
+    setAppState("upload");
+    setDialogAgent(null);
+    setMessages([]);
   };
+
+  const progress = useMemo(() => {
+    if (dialogAgent) {
+      return dialogAgent.getProgress();
+    }
+    return { current: 0, total: 0, percentage: 0 };
+  }, [dialogAgent, messages]);
 
   return (
     <div className="min-h-screen bg-background">
@@ -141,10 +276,10 @@ export default function Home() {
                   <div className="flex-1">
                     <Calculator className="w-8 h-8 text-primary mb-3" />
                     <h3 className="text-lg font-semibold mb-2">
-                      Daten prüfen
+                      Fragen beantworten
                     </h3>
                     <p className="text-sm text-muted-foreground leading-relaxed">
-                      Überprüfen Sie die extrahierten Informationen und ergänzen Sie bei Bedarf fehlende Angaben.
+                      Ergänzen Sie im Dialog fehlende Angaben. Das System führt Sie Schritt für Schritt durch die benötigten Informationen.
                     </p>
                   </div>
                 </div>
@@ -173,64 +308,112 @@ export default function Home() {
         </div>
       </div>
 
-      {/* Upload Section */}
+      {/* Main Content Section */}
       <div id="upload" className="py-16 md:py-24">
-        <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-8">
-            <h2 className="text-2xl md:text-3xl font-semibold mb-3">
-              Mietvertrag analysieren
-            </h2>
-            <p className="text-base text-muted-foreground">
-              Laden Sie Ihren Mietvertrag hoch, um die Analyse zu starten
-            </p>
-          </div>
-
-          <div className="space-y-6">
-            <FileUpload
-              onFileSelect={handleFileSelect}
-              onFileRemove={handleFileRemove}
-              selectedFile={selectedFile}
-              isProcessing={isProcessing}
-            />
-
-            {selectedFile && !extractedData && (
-              <div className="flex justify-center">
-                <Button
-                  size="lg"
-                  onClick={handleExtractData}
-                  disabled={isProcessing}
-                  data-testid="button-extract-data"
-                  className="min-w-[200px]"
-                >
-                  {isProcessing ? "Verarbeitung läuft..." : "Daten extrahieren"}
-                </Button>
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+          {/* Upload State */}
+          {appState === "upload" && (
+            <div className="space-y-6">
+              <div className="text-center mb-8">
+                <h2 className="text-2xl md:text-3xl font-semibold mb-3">
+                  Mietvertrag analysieren
+                </h2>
+                <p className="text-base text-muted-foreground">
+                  Laden Sie Ihren Mietvertrag hoch, um die Analyse zu starten
+                </p>
               </div>
-            )}
 
-            {extractedData && (
-              <div className="space-y-6">
-                <ResultCard data={extractedData} />
-                
-                <div className="flex flex-col sm:flex-row gap-3 justify-center">
+              <FileUpload
+                onFileSelect={handleFileSelect}
+                onFileRemove={handleFileRemove}
+                selectedFile={selectedFile}
+                isProcessing={isProcessing}
+              />
+
+              {selectedFile && (
+                <div className="flex justify-center">
                   <Button
                     size="lg"
-                    disabled
-                    data-testid="button-calculate"
+                    onClick={handleExtractData}
+                    disabled={isProcessing}
+                    data-testid="button-extract-data"
+                    className="min-w-[200px]"
                   >
-                    Berechnung durchführen (TODO)
-                  </Button>
-                  <Button
-                    size="lg"
-                    variant="outline"
-                    onClick={handleReset}
-                    data-testid="button-reset"
-                  >
-                    Neu beginnen
+                    {isProcessing ? "Verarbeitung läuft..." : "Daten extrahieren"}
                   </Button>
                 </div>
+              )}
+            </div>
+          )}
+
+          {/* Dialog State */}
+          {appState === "dialog" && dialogAgent && extractedData && (
+            <div className="space-y-6">
+              <div className="text-center mb-6">
+                <h2 className="text-2xl md:text-3xl font-semibold mb-3">
+                  Angaben vervollständigen
+                </h2>
+                <p className="text-base text-muted-foreground">
+                  Bitte beantworten Sie noch einige Fragen zu Ihrem Mietvertrag
+                </p>
               </div>
-            )}
-          </div>
+
+              <ChatInterface
+                messages={messages}
+                currentQuestion={dialogAgent.getCurrentQuestion()}
+                onAnswer={handleAnswer}
+                progress={progress}
+                isComplete={dialogAgent.isComplete()}
+              />
+
+              {dialogAgent.isComplete() && (
+                <div className="flex justify-center pt-4">
+                  <Button
+                    size="lg"
+                    onClick={handleShowSummary}
+                    data-testid="button-show-summary"
+                  >
+                    Zusammenfassung anzeigen
+                    <ArrowRight className="w-4 h-4 ml-2" />
+                  </Button>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Summary State */}
+          {appState === "summary" && extractedData && (
+            <div className="space-y-6">
+              <div className="text-center mb-6">
+                <h2 className="text-2xl md:text-3xl font-semibold mb-3">
+                  Vollständige Zusammenfassung
+                </h2>
+                <p className="text-base text-muted-foreground">
+                  Alle Vertragsdaten wurden erfolgreich erfasst
+                </p>
+              </div>
+
+              <ResultCard data={extractedData as ContractData} />
+              
+              <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                <Button
+                  size="lg"
+                  disabled
+                  data-testid="button-calculate"
+                >
+                  Berechnung durchführen (Phase 3)
+                </Button>
+                <Button
+                  size="lg"
+                  variant="outline"
+                  onClick={handleReset}
+                  data-testid="button-reset"
+                >
+                  Neu beginnen
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
@@ -242,12 +425,11 @@ export default function Home() {
               <div className="flex gap-4">
                 <AlertCircle className="w-6 h-6 text-primary flex-shrink-0" />
                 <div>
-                  <h3 className="font-semibold mb-2">Phase 1 - Prototyp</h3>
+                  <h3 className="font-semibold mb-2">Phase 2 - Interaktiver Dialog</h3>
                   <p className="text-sm text-muted-foreground leading-relaxed">
-                    Diese Version zeigt die Kernfunktionalität: Datei-Upload und strukturierte Datenanzeige.
-                    Die OCR-Extraktion verwendet aktuell Beispieldaten. In Phase 2 folgen die juristische
-                    Berechnung gemäss Art. 270a OR und die automatische Generierung eines Schreibens
-                    an die Hausverwaltung.
+                    Diese Version zeigt die Dialog-Funktionalität: Nach der OCR-Extraktion werden fehlende
+                    Angaben durch interaktive Fragen ergänzt. Die juristische Berechnung und PDF-Generierung
+                    folgen in Phase 3.
                   </p>
                 </div>
               </div>
