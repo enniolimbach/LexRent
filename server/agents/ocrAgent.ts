@@ -36,6 +36,10 @@ export async function extractContractData(
     current_reference_rate: 1.25,
     inflation_since_contract: 3.8,
     cost_increase_per_year: 0.5,
+    // Phase 4 - Additional fields for letter generation
+    name: "Max Muster",
+    management: "Muster Immobilien AG",
+    property_address: "Nordstrasse 9, 8006 Zürich",
   };
 
   console.log("[OCR Agent] Extraction complete (mock data)");
