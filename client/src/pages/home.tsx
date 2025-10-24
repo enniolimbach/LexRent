@@ -2,15 +2,17 @@ import { useState, useEffect, useMemo } from "react";
 import { FileUpload } from "@/components/FileUpload";
 import { ResultCard } from "@/components/ResultCard";
 import { ChatInterface } from "@/components/ChatInterface";
+import { ResultSummary } from "@/components/ResultSummary";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Shield, FileCheck, Calculator, AlertCircle, ArrowRight } from "lucide-react";
-import type { ContractData, DialogMessage } from "@shared/schema";
+import type { ContractData, DialogMessage, CalculationResult } from "@shared/schema";
 import { DialogAgent } from "@/agents/dialogAgent";
+import { CalculationAgent } from "@/agents/calculationAgent";
 import { getMissingFields } from "@/utils/validation";
 import { useToast } from "@/hooks/use-toast";
 
-type AppState = "upload" | "dialog" | "summary";
+type AppState = "upload" | "dialog" | "summary" | "calculation";
 
 export default function Home() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -19,6 +21,8 @@ export default function Home() {
   const [appState, setAppState] = useState<AppState>("upload");
   const [dialogAgent, setDialogAgent] = useState<DialogAgent | null>(null);
   const [messages, setMessages] = useState<DialogMessage[]>([]);
+  const [calculationResult, setCalculationResult] = useState<CalculationResult | null>(null);
+  const [isCalculating, setIsCalculating] = useState(false);
   const { toast } = useToast();
 
   // Initialize dialog agent when data is extracted
@@ -188,12 +192,43 @@ export default function Home() {
     setAppState("summary");
   };
 
+  const handleCalculate = async () => {
+    if (!extractedData) return;
+
+    setIsCalculating(true);
+
+    try {
+      // Simulate calculation delay
+      await new Promise(resolve => setTimeout(resolve, 800));
+
+      const result = CalculationAgent.calculate(extractedData as ContractData);
+      setCalculationResult(result);
+      setAppState("calculation");
+
+      toast({
+        title: "Berechnung abgeschlossen",
+        description: result.isReductionPossible 
+          ? "Eine Mietzinssenkung ist möglich!" 
+          : "Die Berechnung wurde durchgeführt.",
+      });
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Fehler bei der Berechnung",
+        description: error instanceof Error ? error.message : "Die Berechnung konnte nicht durchgeführt werden.",
+      });
+    } finally {
+      setIsCalculating(false);
+    }
+  };
+
   const handleReset = () => {
     setSelectedFile(null);
     setExtractedData(null);
     setAppState("upload");
     setDialogAgent(null);
     setMessages([]);
+    setCalculationResult(null);
   };
 
   const progress = useMemo(() => {
@@ -398,16 +433,52 @@ export default function Home() {
               <div className="flex flex-col sm:flex-row gap-3 justify-center">
                 <Button
                   size="lg"
-                  disabled
+                  onClick={handleCalculate}
+                  disabled={isCalculating}
                   data-testid="button-calculate"
                 >
-                  Berechnung durchführen (Phase 3)
+                  {isCalculating ? "Berechnung läuft..." : "Berechnung durchführen"}
                 </Button>
                 <Button
                   size="lg"
                   variant="outline"
                   onClick={handleReset}
                   data-testid="button-reset"
+                >
+                  Neu beginnen
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {/* Calculation Result State */}
+          {appState === "calculation" && calculationResult && extractedData && (
+            <div className="space-y-6">
+              <div className="text-center mb-6">
+                <h2 className="text-2xl md:text-3xl font-semibold mb-3">
+                  Berechnung nach Art. 270a OR
+                </h2>
+                <p className="text-base text-muted-foreground">
+                  Ihr persönliches Ergebnis zur Mietzinssenkung
+                </p>
+              </div>
+
+              <ResultSummary result={calculationResult} />
+
+              <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                <Button
+                  size="lg"
+                  variant="outline"
+                  onClick={() => setAppState("summary")}
+                  data-testid="button-back-to-summary"
+                >
+                  Zurück zur Zusammenfassung
+                </Button>
+                <Button
+                  size="lg"
+                  variant="outline"
+                  onClick={handleReset}
+                  data-testid="button-reset-after-calc"
                 >
                   Neu beginnen
                 </Button>
@@ -425,11 +496,11 @@ export default function Home() {
               <div className="flex gap-4">
                 <AlertCircle className="w-6 h-6 text-primary flex-shrink-0" />
                 <div>
-                  <h3 className="font-semibold mb-2">Phase 2 - Interaktiver Dialog</h3>
+                  <h3 className="font-semibold mb-2">Phase 3 - Juristische Berechnung</h3>
                   <p className="text-sm text-muted-foreground leading-relaxed">
-                    Diese Version zeigt die Dialog-Funktionalität: Nach der OCR-Extraktion werden fehlende
-                    Angaben durch interaktive Fragen ergänzt. Die juristische Berechnung und PDF-Generierung
-                    folgen in Phase 3.
+                    Diese Version zeigt die vollständige Funktionalität: OCR-Extraktion, interaktiver Dialog
+                    und juristische Berechnung gemäss Art. 270a OR. Die automatische PDF-Generierung des
+                    Schreibens an die Hausverwaltung folgt in Phase 4.
                   </p>
                 </div>
               </div>

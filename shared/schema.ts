@@ -69,3 +69,24 @@ export interface DialogState {
   currentQuestionIndex: number;
   isComplete: boolean;
 }
+
+// Calculation result types (Phase 3)
+export interface CalculationResult {
+  isReductionPossible: boolean;
+  rateDifferential: number;
+  interestReductionPercent: number;
+  yearsSinceAdjustment: number;
+  costIncreasePercent: number;
+  inflationAdjustmentPercent: number;
+  effectiveReductionPercent: number;
+  currentRent: number;
+  newRent: number;
+  monthlySavings: number;
+  annualSavings: number;
+  explanationDe: string;
+  detailedBreakdown: {
+    step: string;
+    value: string;
+    explanation: string;
+  }[];
+}
