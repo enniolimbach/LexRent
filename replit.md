@@ -2,9 +2,9 @@
 
 ## Overview
 
-LexRent is a legal tech application designed for Swiss tenants to analyze rental contracts and determine potential rent reductions based on Swiss rental law (Art. 270a OR). The application uses OCR technology to extract contract data from uploaded documents, guides users through an interactive dialog to collect missing information, and performs legal calculations to assess rent adjustment possibilities.
+LexRent is a legal tech application designed for Swiss tenants to analyze rental contracts and determine potential rent reductions based on Swiss rental law (Art. 270a OR). The application uses OCR technology to extract contract data from uploaded documents, guides users through an interactive dialog to collect missing information, performs legal calculations to assess rent adjustment possibilities, and automatically generates formal letters to landlords as downloadable PDFs.
 
-The system is built as a full-stack web application with a React frontend and Express backend, currently in Phase 1 (MVP with mock data) with plans to integrate real OCR services and complete calculation logic in Phase 2.
+The system is built as a full-stack web application with a React frontend and Express backend. All core features are implemented (Phases 1-4): file upload with OCR extraction, interactive dialog, legal calculation engine, and PDF letter generation. Future enhancements include real OCR integration and production deployment.
 
 ## User Preferences
 
@@ -26,7 +26,10 @@ Preferred communication style: Simple, everyday language.
 
 **Form Handling**: React Hook Form with Zod for schema validation via @hookform/resolvers.
 
-**Agent Architecture**: Client-side dialog agent (`DialogAgent` class) implements a state machine pattern to manage the interactive question flow for collecting missing contract data. The agent maintains conversation state and determines which questions to ask based on data completeness validation.
+**Agent Architecture**: 
+- `DialogAgent` (client-side): State machine pattern for interactive question flow, manages conversation state and determines questions based on data completeness
+- `CalculationAgent` (client-side): Performs Swiss rental law calculations per Art. 270a OR, generates German legal explanations
+- `DocumentAgent` (client-side): Transforms contract and calculation data into formal German business letters
 
 ### Backend Architecture
 
@@ -34,9 +37,14 @@ Preferred communication style: Simple, everyday language.
 
 **API Design**: RESTful endpoints with file upload support via Multer (memory storage, 10MB limit, supports PDF/JPG/PNG).
 
-**OCR Processing**: Server-side OCR agent (`extractContractData`) currently returns mock data for Phase 1. Designed for future integration with Google Cloud Vision API, Tesseract.js, or Azure Form Recognizer.
+**OCR Processing**: Server-side OCR agent (`extractContractData`) currently returns comprehensive mock data including tenant/landlord information. Designed for future integration with Google Cloud Vision API, Tesseract.js, or Azure Form Recognizer.
 
-**Calculation Engine**: Placeholder utilities (`server/utils/calculations.ts`) for Swiss rental law calculations (Art. 270a OR). Will implement reference rate differential calculations, inflation adjustments, and cost increase considerations in Phase 2.
+**Calculation Engine**: Complete implementation of Swiss rental law formulas (`client/src/utils/calculationFormulas.ts`):
+- Reference rate differential calculation (Art. 270a OR)
+- Interest-based rent reduction (2.91% per 0.25% rate change)
+- Cost increase offsetting (configurable annual percentage)
+- Inflation adjustment based on LIK (Landesindex der Konsumentenpreise)
+- Effective reduction calculation with detailed breakdown
 
 **Session Management**: Uses connect-pg-simple for PostgreSQL-backed session storage.
 
@@ -48,12 +56,13 @@ Preferred communication style: Simple, everyday language.
 
 **Schema Design**: 
 - Users table with UUID primary keys
-- Contract data validated via Zod schemas (`contractDataSchema`) with fields for rent amounts, reference rates, dates, location, and user preferences
+- Contract data validated via Zod schemas (`contractDataSchema`) with fields for rent amounts, reference rates, dates, location, user preferences, and Phase 4 additions (tenant name, landlord/management company, property address)
 - Dialog state tracking with enum-based field identifiers
+- Calculation result interface with detailed breakdown structure
 
 **Validation Strategy**: Zod schemas shared between client and server (`shared/schema.ts`) ensure consistent validation. The `getMissingFields` utility determines data completeness for the dialog flow.
 
-**Data Flow**: File upload → Server OCR extraction → Validation → Dialog collection → Calculation → Results display
+**Data Flow**: File upload → Server OCR extraction → Validation → Interactive dialog → Calculation with breakdown → **PDF letter generation** → Download
 
 ### External Dependencies
 
@@ -64,6 +73,7 @@ Preferred communication style: Simple, everyday language.
 - Embla Carousel for any carousel functionality
 - CMDK for command palette patterns
 - Lucide React for iconography
+- @react-pdf/renderer for client-side PDF generation (Phase 4)
 
 **Build Tools**:
 - Vite for frontend bundling with React plugin
@@ -82,7 +92,31 @@ Preferred communication style: Simple, everyday language.
 - class-variance-authority for component variant management
 - nanoid for generating unique identifiers
 
-**Future Integrations** (Phase 2):
-- OCR service provider (Google Cloud Vision API, Tesseract.js, or Azure Form Recognizer)
-- PDF parsing libraries for contract document processing
-- Email service for sending legal letters to landlords
+**PDF Generation** (Phase 4):
+- @react-pdf/renderer for creating professional Swiss business letters
+- Client-side PDF rendering with proper German character support (umlauts: ä, ö, ü, ß)
+- Swiss formatting for currency (CHF with apostrophes) and dates
+
+**Future Integrations**:
+- Real OCR service provider (Google Cloud Vision API, Tesseract.js, or Azure Form Recognizer)
+- PDF parsing libraries for advanced contract document processing
+- Email service for direct letter sending to landlords (currently download-only)
+- Integration with BWO (Bundesamt für Wohnungswesen) for official reference rate data
+- BFS (Bundesamt für Statistik) for official inflation/LIK data
+
+## Project Status (October 2025)
+
+**Phase 1 - MVP (Completed)**: File upload with drag & drop, mock OCR extraction, structured JSON display
+**Phase 2 - Interactive Dialog (Completed)**: State machine for missing data collection, chat interface with 5-question sequence, automatic summary transition
+**Phase 3 - Legal Calculation (Completed)**: Complete Swiss rental law formula implementation, German explanations, detailed breakdown display
+**Phase 4 - PDF Generation (Completed)**: Automatic formal letter generation, professional Swiss business letter layout, PDF download functionality
+
+**Current State**: Production-ready prototype with complete user journey from upload to PDF download. All core features tested and validated via automated E2E tests.
+
+**Key Components**:
+- `client/src/pages/home.tsx`: Main application with state management
+- `client/src/agents/`: DialogAgent, CalculationAgent, DocumentAgent
+- `client/src/components/`: FileUpload, ChatInterface, ResultSummary, PdfPreview, LetterDocument
+- `client/src/utils/`: calculationFormulas, pdfTemplates, validation
+- `server/agents/ocrAgent.ts`: Mock OCR extraction (ready for real integration)
+- `shared/schema.ts`: Shared data schemas and types
