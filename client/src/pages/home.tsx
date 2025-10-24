@@ -4,9 +4,11 @@ import { ResultCard } from "@/components/ResultCard";
 import { ChatInterface } from "@/components/ChatInterface";
 import { ResultSummary } from "@/components/ResultSummary";
 import { PdfPreview } from "@/components/PdfPreview";
+import { ProgressBar } from "@/components/ProgressBar";
+import { ConsentDialog } from "@/components/ConsentDialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Shield, FileCheck, Calculator, AlertCircle, ArrowRight, FileText } from "lucide-react";
+import { Shield, FileCheck, Calculator, AlertCircle, ArrowRight, FileText, Info } from "lucide-react";
 import type { ContractData, DialogMessage, CalculationResult } from "@shared/schema";
 import { DialogAgent } from "@/agents/dialogAgent";
 import { CalculationAgent } from "@/agents/calculationAgent";
@@ -33,6 +35,8 @@ export default function Home() {
     closing: string;
     footer: string;
   } | null>(null);
+  const [showConsentDialog, setShowConsentDialog] = useState(false);
+  const [hasConsented, setHasConsented] = useState(false);
   const { toast } = useToast();
 
   // Initialize dialog agent when data is extracted
@@ -75,9 +79,35 @@ export default function Home() {
   }, [extractedData, appState]);
 
   const handleFileSelect = async (file: File) => {
+    // Check consent before allowing file selection
+    if (!hasConsented) {
+      setSelectedFile(file);
+      setShowConsentDialog(true);
+      return;
+    }
+    
     setSelectedFile(file);
     setExtractedData(null);
     setAppState("upload");
+  };
+
+  const handleConsent = () => {
+    setHasConsented(true);
+    setShowConsentDialog(false);
+    toast({
+      title: "Einwilligung erteilt",
+      description: "Sie können nun mit der Vertragsanalyse fortfahren.",
+    });
+  };
+
+  const handleDeclineConsent = () => {
+    setShowConsentDialog(false);
+    setSelectedFile(null);
+    toast({
+      variant: "destructive",
+      title: "Einwilligung erforderlich",
+      description: "Sie müssen den Datenschutzbestimmungen zustimmen, um LexRent nutzen zu können.",
+    });
   };
 
   const handleFileRemove = () => {
@@ -388,6 +418,11 @@ export default function Home() {
         </div>
       </div>
 
+      {/* Progress Bar */}
+      {appState !== "upload" && (
+        <ProgressBar currentStep={appState} />
+      )}
+
       {/* Main Content Section */}
       <div id="upload" className="py-16 md:py-24">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -567,18 +602,41 @@ export default function Home() {
         </div>
       </div>
 
-      {/* Info Section */}
+      {/* Legal Disclaimer Section */}
       <div className="py-12 bg-muted/30 border-t">
-        <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
+          {/* Disclaimer */}
+          <Card className="border-amber-500/30 bg-amber-50/50 dark:bg-amber-950/20">
+            <CardContent className="p-6">
+              <div className="flex gap-4">
+                <Info className="w-6 h-6 text-amber-600 dark:text-amber-400 flex-shrink-0" />
+                <div>
+                  <h3 className="font-semibold mb-2 text-amber-900 dark:text-amber-100">
+                    Wichtiger rechtlicher Hinweis
+                  </h3>
+                  <p className="text-sm text-amber-800 dark:text-amber-200 leading-relaxed">
+                    LexRent bietet <strong>keine Rechtsberatung oder Rechtsvertretung</strong>. 
+                    Die bereitgestellten Informationen und Berechnungen gemäss Art. 270a OR dienen 
+                    ausschliesslich Ihrer Orientierung. Für verbindliche rechtliche Auskünfte wenden 
+                    Sie sich bitte an eine qualifizierte Fachperson, einen Mieterverband oder eine 
+                    Rechtsberatungsstelle.
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Status Info */}
           <Card className="border-primary/20 bg-primary/5">
             <CardContent className="p-6">
               <div className="flex gap-4">
-                <AlertCircle className="w-6 h-6 text-primary flex-shrink-0" />
+                <Shield className="w-6 h-6 text-primary flex-shrink-0" />
                 <div>
-                  <h3 className="font-semibold mb-2">Phase 4 - Automatische PDF-Generierung</h3>
+                  <h3 className="font-semibold mb-2">Phase 5 - Präsentationsfähiger MVP</h3>
                   <p className="text-sm text-muted-foreground leading-relaxed">
-                    Vollständige Funktionalität: OCR-Extraktion, interaktiver Dialog, juristische Berechnung 
-                    und automatische Erstellung eines formellen Schreibens gemäss Art. 270a OR als PDF-Download.
+                    Vollständig integrierte Funktionalität mit Datenschutz-Compliance, verbesserter UX 
+                    und stabiler Fehlerbehandlung. Upload → Dialog → Berechnung → PDF-Brief-Generierung 
+                    läuft vollständig automatisiert.
                   </p>
                 </div>
               </div>
@@ -617,9 +675,20 @@ export default function Home() {
           </div>
           <div className="mt-8 pt-8 border-t text-center text-sm text-muted-foreground">
             <p>&copy; 2025 LexRent. Alle Rechte vorbehalten.</p>
+            <p className="mt-2 text-xs">
+              Keine Speicherung personenbezogener Daten • Keine Weitergabe an Dritte • 
+              Temporäre Verarbeitung nur während Ihrer Session
+            </p>
           </div>
         </div>
       </footer>
+
+      {/* Consent Dialog */}
+      <ConsentDialog
+        open={showConsentDialog}
+        onConsent={handleConsent}
+        onDecline={handleDeclineConsent}
+      />
     </div>
   );
 }
