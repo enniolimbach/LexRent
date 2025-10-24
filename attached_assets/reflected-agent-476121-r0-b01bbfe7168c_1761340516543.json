@@ -1,0 +1,13 @@
+{
+  "type": "service_account",
+  "project_id": "reflected-agent-476121-r0",
+  "private_key_id": "b01bbfe7168ca75e2ba8f9843a53b42687522cbf",
+  "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQDL1073oUF9ePHB\nedAAFa9iC9b7gUb33gcu6g7r6Md/a5fDEkMgQoo3yuyxjl4GQxZy4HYIpP/EPyZQ\nLbnonoQgzwoo579Jh6KmVOY3dql4C67mp3VdbeWXqjp8+vSvjCflsf+H2yOn04lM\ndPDJ21K+sNWevozPVHUdS7IJvt3Bl03cZinkOm0mau10zPi4l/0w1tR4NaT5wxaE\n+P7g47aew28AB+Q2ohvQWJxpcXlEQO7NAPYoLTJqaKYxArqmA6mYyFJW4rFUwF8C\nWgYvGk3fJDC5GfBHR8L2eeedSrGZ0xQYjSvzIoGd1YwFmVhGRUTsK6/mDxX+AkNL\noK9FYiuxAgMBAAECggEADI4H1pevhW9gEIcUqRSs1zCcfqQhP14E+j4/Sgdt1irF\nz6V9zexbQAF3H56BqwgRx2SM0I59FFTBYtnWI/4zbCPkX82aSgiZG36KKWtdF8A8\ndwdkYqtEo1lAPfdk/7T1th+G+hKkuQ7922AufnhMOeOBXMQmvxRYHERPxGrllKlF\nUCuyvo3j9ORUjp/PtzMr64bbarSyT68daj8pNFH9c3YChOPbcI3QOBKD105G7G1x\n7tSLu+F5TRNRF/ZkfQCSQL2amoJBzajp7n9eGPWHoyjuor57EPH1WlXf3IZ/4Hdz\neJJnQ3PK9//luDNk6AzZ6kJGq92Vcnt+g6ZjrYHHiwKBgQD2+r+55WsjoDaFJleB\nF+3talO9qn2UkXJteqeIiQBCZmnyLedE/GFeex6adTIeL3lmXUUJwBBpJYxvv0MB\nQJV5SaY3R/Sx+s7PTXjxkQa8ztqnJj6eexRkS/wdIPrSxGmZB/y+pFSxD1gvASv5\nMakBsaJEhWoqIzDSVTAqP68+YwKBgQDTSTdkZ6sSrbrM5UBUlizcQ8iB2s7tJx9o\nS8OfqdkhfXsyf1a7K5YmlnjlNDNKjAUPeYCWuqx8v4Jt21ii0y1bIWJEJe3BdRsY\ns8AYbwqePkNmA815WHSMR2m0pLA+yszFTEBmVzQmYPYy3h0Swau1OK96BNNjp0Km\nAWLEo/AP2wKBgHpVrc4Ysz8MRrUhTsqk3bdxqVUTM+z5NmLAFGfu5G//Zo8M6bck\nA97WwUvkrRSCk3F+1YmE1xwd+zgG1tux79gKAQj03WGjR/kq+LM/EMVI+Mk+ilnZ\nwToE4TZUdakcnOmuKSUNJN4nKZjuzac7T+mE4UlrhDCnCbHFfHwQ227dAoGBAJ02\n5KWsUeoTJWUizIxkNjsroL2nD8P9EWysu4JJgsxdr1by05lwJEjQPGLoRaYZrAZI\ntXryqjgk1CtkRH7bvesKWzE0O8Zwmdn2nmBP98mpsMLu32yEeiyLUsdcp9wBUP8Z\n7u13w9Eu4uMUzPNQ8rBk3oVfo9+J7JjTfSeuiIlzAoGAY9S07y3NyMOEdgnXEo0W\nUU6bjuPbPeT1M0q5ywK1uyoipxPk5ZHaOplmCsJ3x+nyEUmqZUe9bOzG4yMJ5/4X\nrU+0ojMv5F6c+AxC3SHd90ZBbT0pChBTnBOtj2mlROrEFdAsAlRtuWsLmGXtDvGC\nvxNS9e/N+8kikWR6nJ2gL4E=\n-----END PRIVATE KEY-----\n",
+  "client_email": "lexrent@reflected-agent-476121-r0.iam.gserviceaccount.com",
+  "client_id": "106069149954657334227",
+  "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+  "token_uri": "https://oauth2.googleapis.com/token",
+  "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+  "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/lexrent%40reflected-agent-476121-r0.iam.gserviceaccount.com",
+  "universe_domain": "googleapis.com"
+}
