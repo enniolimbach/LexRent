@@ -91,13 +91,13 @@ export class DialogAgent {
         const boolValue = answer.toLowerCase().includes("ja") || 
                          answer.toLowerCase().includes("yes") ||
                          answer.toLowerCase() === "true";
-        this.contractData[this.state.currentField] = boolValue;
+        (this.contractData as any)[this.state.currentField] = boolValue;
         break;
       
       case "text":
         if (this.state.currentField === DialogField.LAST_INCREASE) {
           // Handle "keine" or actual date
-          this.contractData[this.state.currentField] = 
+          (this.contractData as any)[this.state.currentField] = 
             answer.toLowerCase().includes("keine") ? null : answer;
         } else if (this.state.currentField === DialogField.GROSS_RENT) {
           // Parse as number with validation
@@ -108,9 +108,9 @@ export class DialogAgent {
               error: "Bitte geben Sie einen gültigen Betrag ein (z.B. 2650)." 
             };
           }
-          this.contractData[this.state.currentField] = numValue;
+          (this.contractData as any)[this.state.currentField] = numValue;
         } else {
-          this.contractData[this.state.currentField] = answer;
+          (this.contractData as any)[this.state.currentField] = answer;
         }
         break;
       
@@ -122,7 +122,7 @@ export class DialogAgent {
             error: "Bitte wählen Sie eine der verfügbaren Optionen."
           };
         }
-        this.contractData[this.state.currentField] = answer as any;
+        (this.contractData as any)[this.state.currentField] = answer;
         break;
     }
 
