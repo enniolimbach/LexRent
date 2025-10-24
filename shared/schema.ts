@@ -32,6 +32,10 @@ export const contractDataSchema = z.object({
   cost_increase_per_year: z.number(),
   gross_rent: z.number().positive().optional(), // Phase 2
   ziel: z.enum(["nur Prüfung", "Brief"]).optional(), // Phase 2
+  // Phase 4 - Additional fields for letter generation
+  name: z.string().optional(), // Tenant name
+  management: z.string().optional(), // Landlord/management company
+  property_address: z.string().optional(), // Property address (if different from tenant address)
 });
 
 export type ContractData = z.infer<typeof contractDataSchema>;
