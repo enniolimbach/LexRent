@@ -3,16 +3,18 @@ import { FileUpload } from "@/components/FileUpload";
 import { ResultCard } from "@/components/ResultCard";
 import { ChatInterface } from "@/components/ChatInterface";
 import { ResultSummary } from "@/components/ResultSummary";
+import { PdfPreview } from "@/components/PdfPreview";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Shield, FileCheck, Calculator, AlertCircle, ArrowRight } from "lucide-react";
+import { Shield, FileCheck, Calculator, AlertCircle, ArrowRight, FileText } from "lucide-react";
 import type { ContractData, DialogMessage, CalculationResult } from "@shared/schema";
 import { DialogAgent } from "@/agents/dialogAgent";
 import { CalculationAgent } from "@/agents/calculationAgent";
+import { DocumentAgent } from "@/agents/documentAgent";
 import { getMissingFields } from "@/utils/validation";
 import { useToast } from "@/hooks/use-toast";
 
-type AppState = "upload" | "dialog" | "summary" | "calculation";
+type AppState = "upload" | "dialog" | "summary" | "calculation" | "letter";
 
 export default function Home() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -23,6 +25,14 @@ export default function Home() {
   const [messages, setMessages] = useState<DialogMessage[]>([]);
   const [calculationResult, setCalculationResult] = useState<CalculationResult | null>(null);
   const [isCalculating, setIsCalculating] = useState(false);
+  const [letterData, setLetterData] = useState<{
+    letterData: any;
+    subject: string;
+    salutation: string;
+    paragraphs: string[];
+    closing: string;
+    footer: string;
+  } | null>(null);
   const { toast } = useToast();
 
   // Initialize dialog agent when data is extracted
@@ -222,6 +232,40 @@ export default function Home() {
     }
   };
 
+  const handleGenerateLetter = () => {
+    if (!extractedData || !calculationResult) return;
+
+    try {
+      // Generate letter data
+      const data = DocumentAgent.generateLetterData(
+        extractedData as ContractData,
+        calculationResult
+      );
+
+      // Generate letter text
+      const letterText = DocumentAgent.generateLetterText(data);
+
+      // Store letter data for preview
+      setLetterData({
+        letterData: data,
+        ...letterText,
+      });
+
+      setAppState("letter");
+
+      toast({
+        title: "Schreiben generiert",
+        description: "Ihr formelles Schreiben wurde erstellt.",
+      });
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Fehler",
+        description: error instanceof Error ? error.message : "Das Schreiben konnte nicht generiert werden.",
+      });
+    }
+  };
+
   const handleReset = () => {
     setSelectedFile(null);
     setExtractedData(null);
@@ -229,6 +273,7 @@ export default function Home() {
     setDialogAgent(null);
     setMessages([]);
     setCalculationResult(null);
+    setLetterData(null);
   };
 
   const progress = useMemo(() => {
@@ -466,6 +511,16 @@ export default function Home() {
               <ResultSummary result={calculationResult} />
 
               <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                {calculationResult.isReductionPossible && (
+                  <Button
+                    size="lg"
+                    onClick={handleGenerateLetter}
+                    data-testid="button-generate-letter"
+                  >
+                    <FileText className="w-4 h-4 mr-2" />
+                    Schreiben generieren
+                  </Button>
+                )}
                 <Button
                   size="lg"
                   variant="outline"
@@ -485,6 +540,30 @@ export default function Home() {
               </div>
             </div>
           )}
+
+          {/* Letter Preview State */}
+          {appState === "letter" && letterData && (
+            <div className="space-y-6">
+              <div className="text-center mb-6">
+                <h2 className="text-2xl md:text-3xl font-semibold mb-3">
+                  Ihr Schreiben an die Hausverwaltung
+                </h2>
+                <p className="text-base text-muted-foreground">
+                  Prüfen Sie das Schreiben und laden Sie es als PDF herunter
+                </p>
+              </div>
+
+              <PdfPreview
+                letterData={letterData.letterData}
+                subject={letterData.subject}
+                salutation={letterData.salutation}
+                paragraphs={letterData.paragraphs}
+                closing={letterData.closing}
+                footer={letterData.footer}
+                onClose={() => setAppState("calculation")}
+              />
+            </div>
+          )}
         </div>
       </div>
 
@@ -496,11 +575,10 @@ export default function Home() {
               <div className="flex gap-4">
                 <AlertCircle className="w-6 h-6 text-primary flex-shrink-0" />
                 <div>
-                  <h3 className="font-semibold mb-2">Phase 3 - Juristische Berechnung</h3>
+                  <h3 className="font-semibold mb-2">Phase 4 - Automatische PDF-Generierung</h3>
                   <p className="text-sm text-muted-foreground leading-relaxed">
-                    Diese Version zeigt die vollständige Funktionalität: OCR-Extraktion, interaktiver Dialog
-                    und juristische Berechnung gemäss Art. 270a OR. Die automatische PDF-Generierung des
-                    Schreibens an die Hausverwaltung folgt in Phase 4.
+                    Vollständige Funktionalität: OCR-Extraktion, interaktiver Dialog, juristische Berechnung 
+                    und automatische Erstellung eines formellen Schreibens gemäss Art. 270a OR als PDF-Download.
                   </p>
                 </div>
               </div>
